@@ -28,7 +28,7 @@ The shape of the Anndata object should be (number of cells, number of genes or p
 Anndata.obs should contain a celltype field to provide the cell types.
 For spatial RNA/ATAC data, Anndata.obsm should also provide a spatial field to include spatial information.
 
-The following is an example of RNA/ATAC data:
+The following is an example of single-cell RNA/ATAC data:
 ```bash
 AnnData object with n_obs × n_vars = 1000 × 2000
     obs: 'celltype'
