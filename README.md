@@ -123,8 +123,8 @@ This function processes gene expression or chromatin accessibility data containe
 
 This repository provides four datasets on Google Drive: [scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link), [scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link), [spatial scATAC-seq](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link), and [spatial scRNA-seq](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link). For detailed workflows on how CSFeatures identifies differentially expressed genes and differential accessibility regions in scRNA-seq, scATAC-seq, spatial RNA-seq, and spatial ATAC-seq data, please refer to the following links:
 
-- [scATAC-seq](./tutorials/scATACseq.ipynb)
-- [scRNA-seq](./tutorials/scRNAseq.ipynb)
-- [spatial_scATAC-seq](./tutorials/spatial_scATACseq.ipynb)
-- [spatial_scRNA-seq](./tutorials/spatial_scRNAseq.ipynb)
+- [scATAC-seq](./tutorials/scATAC-seq.ipynb)
+- [scRNA-seq](./tutorials/scRNA-seq.ipynb)
+- [spatial_scATAC-seq](./tutorials/spatial_ATAC-seq.ipynb)
+- [spatial_scRNA-seq](./tutorials/spatial_RNA-seq.ipynb)
 
