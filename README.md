@@ -127,5 +127,5 @@ This repository provides four example datasets on Google Drive: [scRNA-seq](http
 
 - [scRNA-seq](./tutorials/scRNA-seq.ipynb)
 - [scATAC-seq](./tutorials/scATAC-seq.ipynb)
-- [spatial_scRNA-seq](./tutorials/spatial_RNA-seq.ipynb)
-- [spatial_scATAC-seq](./tutorials/spatial_ATAC-seq.ipynb)
+- [spatial_RNA-seq](./tutorials/spatial_RNA-seq.ipynb)
+- [spatial_ATAC-seq](./tutorials/spatial_ATAC-seq.ipynb)
