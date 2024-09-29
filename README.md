@@ -20,7 +20,7 @@ The input of CSFeatures consists of a preprocessed gene expression matrix and a 
 You can also provide an AnnData object as input. The provided AnnData format should meet the following requirements:
 - The shape of AnnData should be (number of cells, number of genes or regions).
 - The AnnData.obs must contain a 'celltype' field to provide cell classifications.
-- If using spatial scRNA-seq/scATAC-seq data, the AnnData.obsm should include a 'spatial' field to provide spatial information.
+- If processing spatial RNA-seq or spatial ATAC-seq data, the AnnData.obsm should include a 'spatial' field to provide spatial coordinates.
 
 The following is an example of scRNA-seq/scATAC-seq data:
 
@@ -28,7 +28,7 @@ The following is an example of scRNA-seq/scATAC-seq data:
 AnnData object with n_obs × n_vars = 1000 × 2000
     obs: 'celltype'
 ```
-The following is an example of spatial scRNA-seq/scATAC-seq data:
+The following is an example of spatial RNA-seq/ATAC-seq data:
 
 ```bash
 AnnData object with n_obs × n_vars = 1000 × 2000
