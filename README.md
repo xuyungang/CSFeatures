@@ -78,7 +78,7 @@ This function processes gene expression or chromatin accessibility data containe
  A DataFrame containing feature information metrics calculated based on the methods in `method_list`.
 
 - **`adata`**:  
-  The `adata` object with updated EI values.
+  The `AnnData` object with updated EI values.
 
 ## `get_spatial_MarkersEI` Function
 
@@ -119,7 +119,7 @@ This function processes gene expression or chromatin accessibility data containe
  A DataFrame containing feature information metrics calculated based on the methods in `method_list`.
 
 - **`adata`**:  
-  The `adata` object with updated EI values.
+  The `AnnData` object with updated EI values.
 
 ## Tutorial
 
