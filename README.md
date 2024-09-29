@@ -123,7 +123,7 @@ This function processes gene expression or chromatin accessibility data containe
 
 ## Tutorial
 
-This repository provides four example datasets on Google Drive: [scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link),[scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link),  [spatial scRNA-seq](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link) and [spatial scATAC-seq data](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link). For detailed workflows on how CSFeatures identifies differentially expressed genes and differentially accessible regions in scRNA-seq, scATAC-seq, spatial RNA-seq, and spatial ATAC-seq data, please refer to the following links:
+This repository provides four example datasets on Google Drive: [scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link),[scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link),  [spatial RNA-seq](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link) and [spatial ATAC-seq data](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link). For detailed workflows on how CSFeatures identifies differentially expressed genes and differentially accessible regions in scRNA-seq, scATAC-seq, spatial RNA-seq, and spatial ATAC-seq data, please refer to the following links:
 
 - [scRNA-seq](./tutorials/scRNA-seq.ipynb)
 - [scATAC-seq](./tutorials/scATAC-seq.ipynb)
