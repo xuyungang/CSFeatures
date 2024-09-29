@@ -125,8 +125,8 @@ This function processes single-cell gene expression data containing spatial info
 
 This repository provides four datasets on Google Drive: [scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link), [scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link), [spatial scATAC-seq](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link), and [spatial scRNA-seq](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link). The following sections will demonstrate the full workflow for identifying differential genes using this tool with these four datasets as examples.
 
-- [scATAC-seq](./tutorials/scATACseq.ipynb)
-- [scRNA-seq](./tutorials/scRNAseq.ipynb)
-- [spatial_scATAC-seq](./tutorials/spatial_scATACseq.ipynb)
-- [spatial_scRNA-seq](./tutorials/spatial_scRNAseq.ipynb)
+- [scATAC-seq](./tutorials/scATAC-seq.ipynb)
+- [scRNA-seq](./tutorials/scRNA-seq.ipynb)
+- [spatial_scATAC-seq](./tutorials/spatial_ATAC-seq.ipynb)
+- [spatial_scRNA-seq](./tutorials/spatial_RNA-seq.ipynb)
 
