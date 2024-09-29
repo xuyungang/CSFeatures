@@ -1,13 +1,10 @@
-# CSFeatures: Identification of cell type-specific differential features in single-cell and spatial omics data
-
-### English | [简体中文](README_ZH.md)
+# CSFeatures: Identification of Cell-Type-Specific Differential Features in Single-Cell and Spatial Omics Data
 
 ## Introduction
-CSFeatures is a tool used to identify differential genes or differential peaks in single-cell and spatial data.
+CSFeatures is a tool designed to identify differential genes or differential accessibility regions in single-cell and spatial data.
 
 ## Installation
-
-It is recommended to use conda to create a new virtual environment to run this project.
+It is recommended to create a new virtual environment using conda to run this project.
 
 ```
 conda create -n CSFeatures python=3.10
@@ -17,23 +14,23 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### 1. Prepare the Data
-The data to be prepared includes the expression matrix for RNA or ATAC (with rows as cells and columns as genes) and cell types. For spatial data, spatial coordinate-related data also needs to be provided. Spatial information can be extracted using methods such as STAGATE, SpatialPCA, or SpaGCN.
+### 1. Prepare Data
+The data to be prepared includes an expression matrix for scRNA-seq or scATAC-seq (with rows as cells and columns as genes) and the corresponding cell types. For spatial data, spatial coordinates must also be provided. Spatial information can be extracted using methods such as STAGATE, SpatialPCA, or SpaGCN.
 
-In Python, you need to provide an Anndata object as input. Anndata is a class designed by anndata for storing single-cell data.
+In Python, you need to provide an AnnData object as input. AnnData is a class designed to store single-cell data.
 
-The provided Anndata object should meet the following requirements:
+The provided AnnData format should meet the following requirements:
+- The shape of AnnData should be (number of cells, number of genes or regions).
+- The AnnData.obs must contain a 'celltype' field to provide cell classifications.
+- If using spatial scRNA-seq/scATAC-seq data, the AnnData.obsm should include a 'spatial' field to provide spatial information.
 
-The shape of the Anndata object should be (number of cells, number of genes or peaks).
-Anndata.obs should contain a celltype field to provide the cell types.
-For spatial RNA/ATAC data, Anndata.obsm should also provide a spatial field to include spatial information.
+The following is an example of scRNA-seq/scATAC-seq data:
 
-The following is an example of single-cell RNA/ATAC data:
 ```bash
 AnnData object with n_obs × n_vars = 1000 × 2000
     obs: 'celltype'
 ```
-The following is an example of spatial RNA/ATAC data:
+The following is an example of spatial scRNA-seq/scATAC-seq data:
 
 ```bash
 AnnData object with n_obs × n_vars = 1000 × 2000
@@ -126,42 +123,10 @@ This function processes single-cell gene expression data containing spatial info
 - **`adata`**:  
   The `adata` object with updated EI values.
 
-## Example
+This repository provides four datasets on Google Drive: [scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link), [scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link), [spatial scATAC-seq](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link), and [spatial scRNA-seq](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link). The following sections will demonstrate the full workflow for identifying differential genes using this tool with these four datasets as examples.
 
-If it's RNA/ATAC data, run the following code:
-```python
-import marker_utils
-info,adata=marker_utils.getMarkersEI(adata)
-```
-If it's spatial RNA/ATAC data, run the following code:
-```python
-import marker_utils
-info,adata=marker_utils.get_spatial_MarkersEI(adata)
-```
-
-A sample dataset is provided in the `example_data` folder. You can run the following code to identify differentially expressed genes in the sample data:
-
-```python
-import marker_utils
-info, adata = marker_utils.get_spatial_MarkersEI("./example_data/pbmc_2700_seurat.h5ad")
-print(adata)
-```
-The output will be:
-```bash
-AnnData object with n_obs × n_vars = 2700 × 13714
-    obs: 'clusters', 'celltype', 'Naive_CD4_T_EI', 'B_EI', 'Memory_CD4_T_EI', 'FCGR3A_Mono_EI', 'NK_EI', 'CD8_T_EI', 'CD14_Mono_EI', 'DC_EI', 'Platelet_EI'
-    uns: 'pca', 'neighbors'
-    obsm: 'X_pca', 'correctX'
-    varm: 'PCs'
-    obsp: 'distances', 'connectivities'
-
-```
-
-After running the code, the algorithm will calculate the EI value for each gene in each category. The larger the EI value, the more specific the gene is.
-
-Run the following code to save the results as a CSV file:
-```python
-save_data(info,output_dir="./output")
-```
-
+- [scATAC-seq](./tutorials/scATACseq.ipynb)
+- [scRNA-seq](./tutorials/scRNAseq.ipynb)
+- [spatial_scATAC-seq](./tutorials/spatial_scATACseq.ipynb)
+- [spatial_scRNA-seq](./tutorials/spatial_scRNAseq.ipynb)
 

@@ -1,7 +1,7 @@
 # CSFeatures: Identification of cell type-specific differential features in single-cell and spatial omics data
 
 ## 介绍
-CSFeatures是一个用来在单细胞和空间数据中识别差异基因或差异peak的工具。
+CSFeatures是一个用来在单细胞和空间数据中识别差异基因或差异可及性区域的工具。
 
 ## 安装
 
@@ -16,21 +16,21 @@ pip install -r requirements.txt
 ## 快速开始
 
 ### 1. 准备数据
-要准备的数据为RNA或ATAC的表达矩阵（行为细胞，列为基因）和细胞类型。如果是空间类型的数据，还需要提供空间坐标相关的数据。空间信息可以用STAGATE，SpatialPCA或SpaGCN等方法来提取。
+要准备的数据为scRNA-seq或scATAC-seq的表达矩阵（行为细胞，列为基因）和细胞类型。如果是空间类型的数据，还需要提供空间坐标相关的数据。空间信息可以用STAGATE，SpatialPCA或SpaGCN等方法来提取。
 
 在python中，你需要提供一个Anndata对象作为输入。Anndata是anndata设计用来存储单细胞数据的一个类。
 
 提供的Anndata的格式应该满足以下要求:
 - Anndata的形状为(细胞个数,基因个数或peak个数)。
 - Anndata.obs中应有celltype项，用来提供细胞类别。
-- 如果是空间RNA/ATAC数据，还需要在Anndata.obsm提供spatial项，用来提供空间信息。
+- 如果是空间scRNA-seq/scATAC-seq数据，还需要在Anndata.obsm提供spatial项，用来提供空间信息。
 
-以下是一个RNA/ATAC数据的例子:
+以下是一个scRNA-seq/scATAC-seq数据的例子:
 ```bash
 AnnData object with n_obs × n_vars = 1000 × 2000
     obs: 'celltype'
 ```
-以下是一个空间RNA/ATAC数据的例子:
+以下是一个空间scRNA-seq/scATAC-seq数据的例子:
 
 ```bash
 AnnData object with n_obs × n_vars = 1000 × 2000
@@ -40,7 +40,7 @@ AnnData object with n_obs × n_vars = 1000 × 2000
 
 ### 2. 寻找差异基因/peak
 
-该部分主要使用了getMarkersEI和get_spatial_MarkersEI两个函数，
+该部分主要使用了getMarkersEI和get_spatial_MarkersEI两个函数。
 
 ## `getMarkersEI` 函数
 
@@ -128,45 +128,10 @@ AnnData object with n_obs × n_vars = 1000 × 2000
   带有EI值的adata数据
 
 
-本仓库在example_data文件夹下提供了四个数据，分别为ATAC，RNA，空间ATAC，空间RNA数据。
-以下以这四个数据为例。
+本仓库在谷歌云盘中提供了四个数据，分别为[scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link)，[scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link)，[空间scATAC-seq](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link)，[空间scRNA-seq数据](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link)。
+以下以这四个数据为例分别演示使用本工具寻找差异基因的全流程。
 
-注意ATAC数据和空间ATAC数据在使用前需要预处理，我们提供了预处理脚本。
-```python
-python atac_processed.py --input atac_data_path --fpeak 0.05 --output ./
-```
-
-## 示例：
-
-如果是RNA数据：
-```python
-import marker_utils
-info,adata=marker_utils.getMarkersEI(adata)
-pring("排名")
-save_data(info,output_dir="./output") 
-```
-如果是ATAC数据：
-```python
-import marker_utils
-info,adata=marker_utils.getMarkersEI(adata)
-pring("排名")
-save_data(info,output_dir="./output") 
-```
-
-如果是空间RNA数据:
-```python
-import marker_utils
-info,adata=marker_utils.get_spatial_MarkersEI(adata)
-pring("排名")
-save_data(info,output_dir="./output") 
-```
-
-如果是空间ATAC数据:
-```python
-import marker_utils
-info,adata=marker_utils.get_spatial_MarkersEI(adata)
-pring("排名")
-save_data(info,output_dir="./output") 
-```
-
-
+- [scATAC-seq](./tutorials/scATACseq.ipynb)
+- [scRNA-seq](./tutorials/scRNAseq.ipynb)
+- [spatial_scATAC-seq](./tutorials/spatial_scATACseq.ipynb)
+- [spatial_scRNA-seq](./tutorials/spatial_scRNAseq.ipynb)
