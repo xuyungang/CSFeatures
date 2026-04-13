@@ -27,7 +27,47 @@ import sys
 import math
 import scanpy as sc
 from copy import copy
+from sklearn.metrics.pairwise import euclidean_distances, cosine_similarity, rbf_kernel
 
+def compute_the_adjacency_matrix(X:np.ndarray,k_neighbors=15):
+    '''
+    Given cell features, compute the adjacency matrix.
+    Input.
+    X:cell vector, shape:(number of cells,cell features).
+    k_neighbors:number of neighbors.
+    Output.
+    adj_matrix:adjacency matrix, shape (number of cells, number of cells).
+    '''
+    adj_matrix = kneighbors_graph(X, k_neighbors, mode='connectivity',include_self=True)
+    adj_matrix = adj_matrix.toarray()
+    return adj_matrix
+
+def compute_the_similarity_matrix(X:np.ndarray,method="euclidean"):
+    '''
+    Given cell features, compute the similarity matrix.
+    Input.
+    X:cell vector, shape:(number of cells, cell features).
+    METHOD:Method to compute the similarity.
+    Optional:
+    1.
+    Output.
+    Similarity matrix, shape (number of cells, number of cells).
+    '''
+    if method=="euclidean":
+        X=euclidean_distances(X)
+        X=1/(1+X)
+    return X
+
+def expression_matrix_correction(count_matrix:np.ndarray,adj_matrix:np.ndarray):
+    '''
+    Given an expression matrix and a cell similarity matrix, do a correction for expression.
+    Input.
+    count_matrix:expression_matrix, shape (cell, expression).
+    similarity_matrix: cell similarity matrix, shape (cell, cell).
+    Output.
+    Corrected expression matrix, shape (cell, expression).
+    '''
+    return np.matmul(adj_matrix,count_matrix)
 
 def calculate_mean_and_var(adata,cluster_count_matrix:np.ndarray,
     cluster_processed_matrix:np.ndarray,
@@ -50,7 +90,9 @@ def calculate_mean_and_var(adata,cluster_count_matrix:np.ndarray,
     ans[cluster]["var_hat"]= np.array(tmp.mean(axis=0)) - ans[cluster]["mean_hat"] ** 2
     ans[cluster]["var_hat"]= ans[cluster]["var_hat"].reshape(-1)
 
-def expression_matrix_correction(adata:anndata._core.anndata.AnnData):
+
+
+def expression_matrix_correction_adata(adata:anndata._core.anndata.AnnData):
     D=copy(adata.obsp['distances'])
     D.data=1/(D.data+1)
     D=D+scipy.sparse.eye(adata.shape[0])
@@ -283,7 +325,37 @@ import time
 is_calculate_time=True
 if is_calculate_time:
     time_info_dict=defaultdict(int)
-def calculate_gene_info(adata,methods_list=[
+def calculate_gene_info(count_matrix:np.ndarray,processed_matrix:np.ndarray,clusters:np.ndarray,gene_name:np.ndarray,methods_list,**kwargs):
+    ans=defaultdict(dict)
+    tqdm0=tqdm(Counter(clusters).keys())
+    for cluster in tqdm0:
+        for k,method in enumerate(methods_list):
+            tqdm0.set_description_str(f"cluster:{cluster}running{method.__name__}({k+1}/{len(methods_list)})")
+            if is_calculate_time:
+                start_time = time.time()
+            method(count_matrix[clusters==cluster],
+                processed_matrix[clusters==cluster],
+                gene_name,
+                cluster,
+                clusters,
+                count_matrix,
+                processed_matrix,
+                ans,**kwargs)
+            if is_calculate_time:    
+                end_time = time.time()
+                time_info_dict[method.__name__]+=end_time-start_time
+    if is_calculate_time:
+        for i in time_info_dict.keys():
+            print(f"{time_info_dict[i]:.2f} seconds used for {i}.")
+    return ans
+
+
+
+import time
+is_calculate_time=True
+if is_calculate_time:
+    time_info_dict=defaultdict(int)
+def calculate_gene_info_adata(adata,methods_list=[
     calculate_mean_and_var,
     calculate_smoothness,
     calculate_V,
@@ -338,38 +410,147 @@ def dict_to_dataframe(data):
     return df
 
 
+def getMarkersEI(
+    input_file: str = None, 
+    clusters_file: str = None, 
+    adata_path: str = None,
+    batch_col: str = None,
+    n_comps: int = 50,
+    n_neighbors: int = 30,
+    metric: str = 'euclidean',
+    method_list: list = None
+):
+    """
+    Calculate Expression Index (EI) to find marker genes.
+    Automatically handles either CSV file inputs or an AnnData (h5ad) input.
+    """
+    # Set default methods if not explicitly provided
+    if method_list is None:
+        method_list = [
+            calculate_mean_and_var,
+            calculate_smoothness,
+            calculate_V,
+            calculate_prop,
+            calculate_local_mean_max,
+            calculate_EI
+        ]
 
-def getMarkersEI(adata:str,n_comps=50,n_neighbors=30,metric='euclidean',method_list:list=[
-    calculate_mean_and_var,
-    calculate_smoothness,
-    calculate_V,
-    calculate_prop,
-    calculate_local_mean_max,
-    calculate_EI
-]):
-    '''
-    input_file:csv file, first column is gene name, the rest of the columns are cells.
-    clusters_file:csv file,the first column is cell name, the second column is cell type.
-    '''
-    # Loading data
-    print("------Loading data------")
-    adata=sc.read_h5ad(adata)
-    print("------Data transposition------")
-    print(f"{adata.X.shape[0]} cells, {adata.X.shape[1]} genes.")
-    print("------Step1: Calculate PCA------")
-    sc.pp.pca(adata,n_comps=n_comps)
-    print("------Step2: Calculate the similarity matrix------")
-    sc.pp.neighbors(adata,n_neighbors=n_neighbors,use_rep='X_pca',metric=metric)
-    print("------Step3: Adjust the expression value------")
-    expression_matrix_correction(adata)
-    print("------Step4: Calculate EI------")
-    info=calculate_gene_info(adata,method_list)
-    print("------Congratulations, success!------") 
-    for i in info.keys():
-        adata.var[f"{i}_EI"]=info[i]['EI']
-    for i in info.keys():
-        info[i]=dict_to_dataframe(info[i])
-    return info,adata
+    if adata_path is not None:
+        print("------ Loading AnnData ------")
+        adata = sc.read_h5ad(adata_path)
+        
+        def run_adata_pipeline(adata_sub, batch_name="All"):
+            print(f"[{batch_name}] {adata_sub.n_obs} cells, {adata_sub.n_vars} genes.")
+            
+            print(f"[{batch_name}] ------ Step 1: Calculate PCA ------")
+            sc.pp.pca(adata_sub, n_comps=min(n_comps, adata_sub.n_obs - 1))
+            
+            print(f"[{batch_name}] ------ Step 2: Calculate KNN & Similarity ------")
+            sc.pp.neighbors(adata_sub, n_neighbors=n_neighbors, use_rep='X_pca', metric=metric)
+            
+            print(f"[{batch_name}] ------ Step 3: Adjust Expression Value ------")
+            expression_matrix_correction_adata(adata_sub)
+            
+            print(f"[{batch_name}] ------ Step 4: Calculate EI ------")
+            info = calculate_gene_info_adata(adata_sub, method_list)
+            
+            # Format outputs
+            for k in info.keys():
+                adata_sub.var[f"{k}_EI"] = info[k]['EI']
+            for k in info.keys():
+                info[k] = dict_to_dataframe(info[k])
+                
+            return info, adata_sub
+
+        # Branch: Single vs Multi-batch
+        if batch_col is None:
+            print("------ Running Pipeline (No Batch Split) ------")
+            info, processed_adata = run_adata_pipeline(adata)
+            print("------ Success! ------")
+            return info, processed_adata
+        else:
+            print(f"------ Running Pipeline (Split by Batch: '{batch_col}') ------")
+            unique_batches = adata.obs[batch_col].unique()
+            batch_results, batch_adatas = {}, {}
+            
+            for b in unique_batches:
+                print(f"\n====== Processing Batch: {b} ======")
+                # Subset adata for specific batch
+                adata_sub = adata[adata.obs[batch_col] == b].copy()
+                info_b, adata_b = run_adata_pipeline(adata_sub, batch_name=str(b))
+                
+                batch_results[b] = info_b
+                batch_adatas[b] = adata_b
+                
+            print("\n------ All batches success! ------")
+            return batch_results, batch_adatas
+
+
+    elif input_file is not None and clusters_file is not None:
+        print("------ Loading CSV data ------")
+        data = pd.read_csv(input_file)
+        gene_name = np.array(list(data[data.columns[0]]))
+        barcode_name = list(data.columns[1:])
+        clusters = pd.read_csv(clusters_file)
+        
+        print("------ Data Transposition & Metadata Matching ------")
+        X = data.to_numpy().T[1:].astype(np.float32)
+        
+        # Build mapping dictionaries
+        barcode_dict = {clusters.iloc[i, 0]: clusters.iloc[i, 1] for i in range(len(clusters))}
+        batch_dict = {}
+        if batch_col is not None and batch_col in clusters.columns:
+            batch_dict = {clusters.iloc[i, 0]: clusters.loc[i, batch_col] for i in range(len(clusters))}
+            
+        type_list = np.array([barcode_dict.get(i) for i in barcode_name])
+
+        def run_csv_pipeline(X_sub, type_list_sub, batch_name="All"):
+            print(f"[{batch_name}] {X_sub.shape[0]} cells, {X_sub.shape[1]} genes.")
+            
+            print(f"[{batch_name}] ------ Step 1: Calculate PCA ------")
+            pca = PCA(n_components=min(n_comps, X_sub.shape[0]))
+            X_pca = pca.fit_transform(X_sub)
+            
+            print(f"[{batch_name}] ------ Step 2: Calculate KNN Matrix ------")
+            adj_matrix = compute_the_adjacency_matrix(X_pca)
+            
+            print(f"[{batch_name}] ------ Step 3: Calculate Similarity Matrix ------")
+            similarity_matrix = compute_the_similarity_matrix(X_pca)
+            
+            print(f"[{batch_name}] ------ Step 4: Adjust Expression Value ------")
+            matrix = similarity_matrix * adj_matrix
+            matrix = matrix / np.reshape(np.sum(matrix, axis=1), [matrix.shape[0], 1])
+            correct_X = expression_matrix_correction(X_sub, matrix)
+            
+            print(f"[{batch_name}] ------ Step 5: Calculate EI ------")
+            info = calculate_gene_info(X_sub, correct_X, type_list_sub, gene_name, method_list,
+                                       X_pca=X_pca, similarity_matrix=similarity_matrix)
+            return info
+
+        # Branch: Single vs Multi-batch
+        if batch_col is None or not batch_dict:
+            print("------ Running Pipeline (No Batch Split) ------")
+            info = run_csv_pipeline(X, type_list)
+            print("------ Success! ------")
+            return info
+        else:
+            print(f"------ Running Pipeline (Split by Batch: '{batch_col}') ------")
+            batch_list = np.array([batch_dict.get(i) for i in barcode_name])
+            unique_batches = np.unique(batch_list)
+            batch_results = {}
+            
+            for b in unique_batches:
+                print(f"\n====== Processing Batch: {b} ======")
+                # Slice indices for specific batch
+                idx = np.where(batch_list == b)[0]
+                batch_info = run_csv_pipeline(X[idx], type_list[idx], batch_name=str(b))
+                batch_results[b] = batch_info
+                
+            print("\n------ All batches success! ------")
+            return batch_results
+            
+    else:
+        raise ValueError("Invalid Inputs. Provide either 'adata_path' OR both 'input_file' and 'clusters_file'.")
 
 
 def get_spatial_MarkersEI(adata,n_comps=50,
@@ -392,7 +573,7 @@ def get_spatial_MarkersEI(adata,n_comps=50,
     print("------Step2: Calculate the similarity matrix------")
     sc.pp.neighbors(adata,n_neighbors=n_neighbors,use_rep=spatial_key,metric=metric)
     print("------Step3: Adjust the expression value------")
-    expression_matrix_correction(adata)
+    expression_matrix_correction_adata(adata)
     print("------Step4: Calculate EI------")
     info=calculate_gene_info(adata,method_list)
     print("------Congratulations, success!------") 
