@@ -69,7 +69,7 @@ def expression_matrix_correction(count_matrix:np.ndarray,adj_matrix:np.ndarray):
     '''
     return np.matmul(adj_matrix,count_matrix)
 
-def calculate_mean_and_var(adata,cluster_count_matrix:np.ndarray,
+def calculate_mean_and_var_adata(adata,cluster_count_matrix:np.ndarray,
     cluster_processed_matrix:np.ndarray,
     gene_name:np.ndarray,
     cluster:str,
@@ -120,7 +120,106 @@ def calculate_zero_mu_max(adata,cluster_count_matrix:np.ndarray,
         mu_max[index]=other_cluster_max
     ans[cluster]['mu_max']=mu_max
 
-def calculate_V(adata,cluster_count_matrix:np.ndarray,
+def calculate_mean_and_var(cluster_count_matrix:np.ndarray,
+    cluster_processed_matrix:np.ndarray,
+    gene_name:np.ndarray,
+    cluster:str,
+    clusters:np.ndarray,
+    count_matrix:np.ndarray,
+    processed_matrix:np.ndarray,
+    ans:dict,**kwargs):
+    ans[cluster]["mean"]=cluster_count_matrix.mean(axis=0)
+    ans[cluster]["var"]=cluster_count_matrix.var(axis=0)
+    ans[cluster]["mean_hat"]=cluster_processed_matrix.mean(axis=0)
+    ans[cluster]["var_hat"]=cluster_processed_matrix.var(axis=0)
+
+def calculate_local_mean_max(cluster_count_matrix:np.ndarray,
+    cluster_processed_matrix:np.ndarray,
+    gene_name:np.ndarray,
+    cluster:str,
+    clusters:np.ndarray,
+    count_matrix:np.ndarray,
+    processed_matrix:np.ndarray,
+    ans:dict,**kwargs):
+    '''
+    Computes the maximum local mean in the other clusters.
+    Will add a local_mean_max to each cluster in the ans dictionary.
+    '''
+    other_clusters=(clusters==cluster)==False
+    X_pca=kwargs["X_pca"]
+    other_clusters_pca=X_pca[other_clusters] # other cells * genes
+    other_clusters_matrix=count_matrix[other_clusters]
+    other_clusters_knn=compute_the_adjacency_matrix(other_clusters_pca,k_neighbors=20) # other cells * cells
+    local_mean_matrix=np.matmul(other_clusters_knn,other_clusters_matrix)/other_clusters_knn[0].sum()
+    local_mean_max=local_mean_matrix.max(axis=0)
+    ans[cluster]["other_clusters_local_mean_max"]=local_mean_max
+
+
+def calculate_V(cluster_count_matrix:np.ndarray,
+        cluster_processed_matrix:np.ndarray,
+        gene_name:np.ndarray,
+        cluster:str,
+        clusters:np.ndarray,
+        count_matrix:np.ndarray,
+        processed_matrix:np.ndarray,
+        ans:dict,**kwargs):
+    '''
+    Define a method to compute the metrics for a cluster.
+    After calculating the metrics, record the metrics using ans[cluster]["metric name"] = metrics array.
+    Input.
+    cluster_processed_matrix: matrix corresponding to the current cluster. Shape (number of cells, genes).
+    cluster_processed_matrix: the processed matrix corresponding to the current cluster. Shape (number of cells, genes).
+    gene_name:name of the gene, length is an np array of the number of genes.
+    cluster:name of current cluster.
+    clusters:list of clusters, length is an np array of cells.
+    count_matrix: matrix of expression values, shape (number of cells, genes).
+    processed_matrix: matrix of processed values, shape (number of cells, genes).
+    ans:Dictionary to record the computed metrics.
+    '''
+    ans[cluster]["gene_name"]=gene_name
+    var=ans[cluster]["var"]
+    mean_hat=ans[cluster]["mean_hat"]**2
+    # mean_hat=mean_hat/mean_hat.max()
+    mean=ans[cluster]["mean"]**2
+    # V=mean_hat/((ans[cluster]["smoothness"]))
+    V=mean/((ans[cluster]["smoothness"]))
+    ans[cluster]["V"]=V
+
+def calculate_prop(cluster_count_matrix:np.ndarray,
+        cluster_processed_matrix:np.ndarray,
+        gene_name:np.ndarray,
+        cluster:str,
+        clusters:np.ndarray,
+        count_matrix:np.ndarray,
+        processed_matrix:np.ndarray,
+        ans:dict,**kwargs):
+    '''
+    Calculate the percentage of cells with non-zero expression values in the current cluster.
+    Input: original expression matrix cluster_count_matrix
+    Output: proportion of non-zero clusters other than the current cluster (square and add one to increase their influence weights)
+    '''
+    other_clusters=list(Counter(clusters).keys())
+    other_clusters.remove(cluster)
+    prop=np.zeros(shape=[len(other_clusters),len(gene_name)])
+    for k,i in enumerate(other_clusters):
+        tmp_cluster=clusters==i
+        tmp_cluster_matrix=count_matrix[tmp_cluster]
+        tmp_cluster_matrix=(tmp_cluster_matrix>0).mean(axis=0)
+        prop[k,:]=tmp_cluster_matrix
+    # prop_sum = np.sum(np.exp(2*prop*100), axis=0)
+    prop_sum =np.sum((np.e+1)**(prop*100),axis=0)
+    # prop_sum = prop.sum(axis=0)
+    # prop_sum = (((prop_sum*100)**0.5)+1)
+    ans[cluster]["prop_sum"]=prop_sum
+    # ans[cluster]["prop_sum"]=(prop_sum**2)+1
+    ans[cluster]["prop_max"]=prop.max(axis=0)
+    prop = (cluster_count_matrix>0).mean(axis=0)
+    # prop=(prop*100)**2
+    prop=np.exp(prop*100)
+    ans[cluster]["prop"]=prop
+
+
+def calculate_V_adata(adata,cluster_count_matrix:np.ndarray,
         cluster_processed_matrix:np.ndarray,
         gene_name:np.ndarray,
         cluster:str,
@@ -151,7 +250,7 @@ def calculate_V(adata,cluster_count_matrix:np.ndarray,
     ans[cluster]["V"]=V
 
 
-def calculate_local_mean_max(adata,cluster_count_matrix:np.ndarray,
+def calculate_local_mean_max_adata(adata,cluster_count_matrix:np.ndarray,
     cluster_processed_matrix:np.ndarray,
     gene_name:np.ndarray,
     cluster:str,
@@ -177,7 +276,7 @@ def calculate_local_mean_max(adata,cluster_count_matrix:np.ndarray,
     ans[cluster]["other_clusters_local_mean_max"]=local_mean_max.toarray().reshape(-1)
 
 
-def calculate_prop(adata,cluster_count_matrix:np.ndarray,
+def calculate_prop_adata(adata,cluster_count_matrix:np.ndarray,
         cluster_processed_matrix:np.ndarray,
         gene_name:np.ndarray,
         cluster:str,
@@ -212,73 +311,43 @@ def calculate_prop(adata,cluster_count_matrix:np.ndarray,
 
 
 @njit(parallel=True)
-def __smoothness(gene_count,cell2cell,similarity_matrix):
-    cell_dim=cell2cell.shape[0]
-    ans=0
-    for j in prange(cell_dim):
-        for k in prange(similarity_matrix.shape[1]):
-            cell1_index=j
-            cell2_index=cell2cell[j,k]
-            cell1_count=gene_count[cell1_index]
-            cell2_count=gene_count[cell2_index]
-            similarity_1and2=similarity_matrix[j,k]
-            if ((cell1_count==0 and cell2_count==0)): 
-                ans+=1
-            else:
-                ans+=similarity_1and2*(np.abs(cell1_count-cell2_count)) / (cell1_count+cell2_count+1)
-    return ans
-
-from joblib import Parallel, delayed
-import numpy as np
-
-def _smoothness(cluster_count_matrix, similarity_matrix):
+def _smoothness(cluster_count_matrix,similarity_matrix):
     '''
     cluster_count_matrix: expression matrix, shape (cells, genes).
     similarity_matrix: similarity matrix, shape (cell, cell).
     '''
-    cell_dim = cluster_count_matrix.shape[0]
-    gene_dim = cluster_count_matrix.shape[1]
-
-    def process_gene(i):
-        gene_count = cluster_count_matrix[:, i].toarray().reshape(-1)
-        neighnors = np.max((similarity_matrix > 0).sum(axis=1))
-        cell2cell = np.zeros([cell_dim, neighnors], dtype=np.int32)
-        for j in range(cell_dim):
-            start = similarity_matrix.indptr[j]
-            end = similarity_matrix.indptr[j + 1]
-            cell2cell[j][:end - start] = similarity_matrix.indices[start:end]
-        tmp_similarity_matrix = np.array([similarity_matrix[i, cell2cell[i]].toarray().reshape(-1) for i in range(cell_dim)])
-        return __smoothness(gene_count, cell2cell, tmp_similarity_matrix)
-
-    ans = Parallel(n_jobs=16)(delayed(process_gene)(i) for i in range(gene_dim))
-    return np.array(ans)
-
-import scipy.sparse
-
-def calculate_smoothness(adata,cluster_count_matrix:np.ndarray,
+    ans=np.zeros_like(cluster_count_matrix[0])
+    cell_dim=cluster_count_matrix.shape[0]
+    gene_dim=cluster_count_matrix.shape[1]
+    for i in prange(gene_dim):
+        for j in prange(cell_dim):
+            for k in prange(j+1,cell_dim):
+                tmp1=cluster_count_matrix[j][i]
+                tmp2=cluster_count_matrix[k][i]
+                if ((tmp1==0 and tmp2==0)): 
+                    ans[i]+=2
+                else:
+                    ans[i]+=2*similarity_matrix[j][k]*(np.abs(tmp1-tmp2)) / (tmp1+tmp2+1)
+    return ans
+def calculate_smoothness(cluster_count_matrix:np.ndarray,
         cluster_processed_matrix:np.ndarray,
         gene_name:np.ndarray,
         cluster:str,
         clusters:np.ndarray,
         count_matrix:np.ndarray,
         processed_matrix:np.ndarray,
-        ans:dict):
+        ans:dict,**kwargs):
     '''
     Calculate the smoothness of each cluster.
     '''
-    X_pca=adata.obsm["X_pca"]
-    clusters_pca=X_pca[clusters==cluster] # other cells * genes
-    tmp_anndata=sc.AnnData(cluster_processed_matrix)
-    tmp_anndata.obsm['X_pca']=clusters_pca
-    epi.pp.neighbors(tmp_anndata,metric='euclidean',n_neighbors=15,use_rep='X_pca')
-    similarity_matrix=tmp_anndata.obsp['distances']
-    similarity_matrix.data=1/(similarity_matrix.data+1)
-    similarity_matrix= similarity_matrix+scipy.sparse.eye(similarity_matrix.shape[0])
+    similarity_matrix=kwargs["similarity_matrix"]
+    tmp=np.where(clusters==cluster)[0]
+    similarity_matrix=similarity_matrix[tmp]
+    similarity_matrix=similarity_matrix[:,tmp]
     ans[cluster]["smoothness"]=_smoothness(cluster_count_matrix,similarity_matrix) / similarity_matrix.shape[0]**2
     ans[cluster]["smoothness"]=ans[cluster]["smoothness"]
 
-
-def calculate_EI(adata,cluster_count_matrix:np.ndarray,
+def calculate_EI(cluster_count_matrix:np.ndarray,
         cluster_processed_matrix:np.ndarray,
         gene_name:np.ndarray,
         cluster:str,
@@ -300,10 +369,6 @@ def calculate_EI(adata,cluster_count_matrix:np.ndarray,
     processed_matrix: matrix of processed values, shape (number of cells, genes).
     ans:Dictionary to record the computed metrics.
     '''
-    # EI=np.array(ans[cluster]['V'])/ ((ans[cluster]["other_clusters_local_mean_max"])**2+1)
-    # EI=np.array(ans[cluster]['prop'])/ ((ans[cluster]["prop_sum"]))
-    # EI/= ans[cluster]['prop_sum'] 
-    # EI*= ans[cluster]['prop']
     
     EI1=np.array(ans[cluster]['V'])/ ((ans[cluster]["other_clusters_local_mean_max"])**2+1)
     EI1=EI1/EI1.max()
@@ -311,12 +376,108 @@ def calculate_EI(adata,cluster_count_matrix:np.ndarray,
     EI2=EI2/EI2.max()
     
     EI=EI1*EI2
+
+    ans[cluster]['EI']=EI
+
+
+
+
+@njit(parallel=True)
+def __smoothness_adata(gene_count,cell2cell,similarity_matrix):
+    cell_dim=cell2cell.shape[0]
+    ans=0
+    for j in prange(cell_dim):
+        for k in prange(similarity_matrix.shape[1]):
+            cell1_index=j
+            cell2_index=cell2cell[j,k]
+            cell1_count=gene_count[cell1_index]
+            cell2_count=gene_count[cell2_index]
+            similarity_1and2=similarity_matrix[j,k]
+            if ((cell1_count==0 and cell2_count==0)): 
+                ans+=1
+            else:
+                ans+=similarity_1and2*(np.abs(cell1_count-cell2_count)) / (cell1_count+cell2_count+1)
+    return ans
+
+from joblib import Parallel, delayed
+import numpy as np
+
+def __smoothness_adata(cluster_count_matrix, similarity_matrix):
+    '''
+    cluster_count_matrix: expression matrix, shape (cells, genes).
+    similarity_matrix: similarity matrix, shape (cell, cell).
+    '''
+    cell_dim = cluster_count_matrix.shape[0]
+    gene_dim = cluster_count_matrix.shape[1]
+
+    def process_gene(i):
+        gene_count = cluster_count_matrix[:, i].toarray().reshape(-1)
+        neighnors = np.max((similarity_matrix > 0).sum(axis=1))
+        cell2cell = np.zeros([cell_dim, neighnors], dtype=np.int32)
+        for j in range(cell_dim):
+            start = similarity_matrix.indptr[j]
+            end = similarity_matrix.indptr[j + 1]
+            cell2cell[j][:end - start] = similarity_matrix.indices[start:end]
+        tmp_similarity_matrix = np.array([similarity_matrix[i, cell2cell[i]].toarray().reshape(-1) for i in range(cell_dim)])
+        return __smoothness_adata(gene_count, cell2cell, tmp_similarity_matrix)
+
+    ans = Parallel(n_jobs=16)(delayed(process_gene)(i) for i in range(gene_dim))
+    return np.array(ans)
+
+import scipy.sparse
+
+def calculate_smoothness_adata(adata,cluster_count_matrix:np.ndarray,
+        cluster_processed_matrix:np.ndarray,
+        gene_name:np.ndarray,
+        cluster:str,
+        clusters:np.ndarray,
+        count_matrix:np.ndarray,
+        processed_matrix:np.ndarray,
+        ans:dict):
+    '''
+    Calculate the smoothness of each cluster.
+    '''
+    X_pca=adata.obsm["X_pca"]
+    clusters_pca=X_pca[clusters==cluster] # other cells * genes
+    tmp_anndata=sc.AnnData(cluster_processed_matrix)
+    tmp_anndata.obsm['X_pca']=clusters_pca
+    epi.pp.neighbors(tmp_anndata,metric='euclidean',n_neighbors=15,use_rep='X_pca')
+    similarity_matrix=tmp_anndata.obsp['distances']
+    similarity_matrix.data=1/(similarity_matrix.data+1)
+    similarity_matrix= similarity_matrix+scipy.sparse.eye(similarity_matrix.shape[0])
+    ans[cluster]["smoothness"]=__smoothness_adata(cluster_count_matrix,similarity_matrix) / similarity_matrix.shape[0]**2
+    ans[cluster]["smoothness"]=ans[cluster]["smoothness"]
+
+
+def calculate_EI_adata(adata,cluster_count_matrix:np.ndarray,
+        cluster_processed_matrix:np.ndarray,
+        gene_name:np.ndarray,
+        cluster:str,
+        clusters:np.ndarray,
+        count_matrix:np.ndarray,
+        processed_matrix:np.ndarray,
+        ans:dict,
+        **kwargs):
+    '''
+    Define a method to compute the metrics for a cluster.
+    After calculating the metrics, record the metrics using ans[cluster]["metric name"] = metrics array.
+    Input:
+    cluster_count_matrix: matrix corresponding to the current cluster. Shape (number of cells, genes).
+    cluster_processed_matrix: matrix corresponding to current cluster. Shape (number of cells, genes).
+    gene_name:name of the gene, length is an np array of the number of genes.
+    cluster:name of current cluster.
+    clusters:list of clusters, length is an np array of cells.
+    count_matrix: matrix of expression values, shape (number of cells, genes).
+    processed_matrix: matrix of processed values, shape (number of cells, genes).
+    ans:Dictionary to record the computed metrics.
+    '''
     
-    # tmp=ans[cluster]["prop_max"]>0.3
-    # tmp=tmp.astype(np.float32)
-    # tmp[tmp==True]=1e9
-    # tmp[tmp==False]=1
-    # EI/=tmp 
+    EI1=np.array(ans[cluster]['V'])/ ((ans[cluster]["other_clusters_local_mean_max"])**2+1)
+    EI1=EI1/EI1.max()
+    EI2=np.array(ans[cluster]['prop'])/ ((ans[cluster]["prop_sum"]))
+    EI2=EI2/EI2.max()
+    
+    EI=EI1*EI2
 
     ans[cluster]['EI']=EI
 
@@ -356,12 +517,12 @@ is_calculate_time=True
 if is_calculate_time:
     time_info_dict=defaultdict(int)
 def calculate_gene_info_adata(adata,methods_list=[
-    calculate_mean_and_var,
-    calculate_smoothness,
-    calculate_V,
-    calculate_prop,
-    calculate_local_mean_max,
-    calculate_EI
+    calculate_mean_and_var_adata,
+    calculate_smoothness_adata,
+    calculate_V_adata,
+    calculate_prop_adata,
+    calculate_local_mean_max_adata,
+    calculate_EI_adata
 ],celltype_key="celltype"):
     ans=defaultdict(dict)
     genes=np.array(adata.var.index.tolist())
@@ -425,17 +586,28 @@ def getMarkersEI(
     Automatically handles either CSV file inputs or an AnnData (h5ad) input.
     """
     # Set default methods if not explicitly provided
-    if method_list is None:
-        method_list = [
-            calculate_mean_and_var,
-            calculate_smoothness,
-            calculate_V,
-            calculate_prop,
-            calculate_local_mean_max,
-            calculate_EI
-        ]
+    # if method_list is None:
+    #     method_list = [
+    #         calculate_mean_and_var_adata,
+    #         calculate_mean_and_var,
+    #         calculate_smoothness_adata,
+    #         calculate_smoothness,
+    #         calculate_V,
+    #         calculate_prop,
+    #         calculate_local_mean_max_adata,
+    #         calculate_local_mean_max,
+    #         calculate_EI
+    #     ]
 
     if adata_path is not None:
+        method_list = [
+            calculate_mean_and_var_adata,
+            calculate_smoothness_adata,
+            calculate_V_adata,
+            calculate_prop_adata,
+            calculate_local_mean_max_adata,
+            calculate_EI_adata
+        ]
         print("------ Loading AnnData ------")
         adata = sc.read_h5ad(adata_path)
         
@@ -487,6 +659,14 @@ def getMarkersEI(
 
 
     elif input_file is not None and clusters_file is not None:
+        method_list = [
+            calculate_mean_and_var,
+            calculate_smoothness,
+            calculate_V,
+            calculate_prop,
+            calculate_local_mean_max,
+            calculate_EI
+        ]
         print("------ Loading CSV data ------")
         data = pd.read_csv(input_file)
         gene_name = np.array(list(data[data.columns[0]]))
@@ -556,11 +736,11 @@ def getMarkersEI(
 def get_spatial_MarkersEI(adata,n_comps=50,
                         n_neighbors=30,metric='euclidean',
                         spatial_key="spatial",method_list=[
-    calculate_mean_and_var,
-    calculate_smoothness,
+    calculate_mean_and_var_adata,
+    calculate_smoothness_adata,
     calculate_V,
     calculate_prop,
-    calculate_local_mean_max,
+    calculate_local_mean_max_adata,
     calculate_EI
 ]):
     # Loading data
