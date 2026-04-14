@@ -738,10 +738,10 @@ def get_spatial_MarkersEI(adata,n_comps=50,
                         spatial_key="spatial",method_list=[
     calculate_mean_and_var_adata,
     calculate_smoothness_adata,
-    calculate_V,
-    calculate_prop,
+    calculate_V_adata,
+    calculate_prop_adata,
     calculate_local_mean_max_adata,
-    calculate_EI
+    calculate_EI_adata
 ]):
     # Loading data
     print("------Loading data------")
