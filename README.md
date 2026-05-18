@@ -1,4 +1,4 @@
-# CSFeatures: Identification of Cell Type-Specific Differential Features in Single-Cell and Spatial Omics Data
+# CSFeatures: Identification of Cell-Type-Specific Differential Features in Single-Cell and Spatial Omics Data
 
 ## Introduction
 CSFeatures is a tool designed to identify cell type-specific differentially expressed genes or differentially accessible regions in single-cell and spatial omics data.
