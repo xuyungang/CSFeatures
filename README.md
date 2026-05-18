@@ -129,3 +129,8 @@ This repository provides four example datasets on Google Drive: [scRNA-seq](http
 - [scATAC-seq](./tutorials/scATAC-seq.ipynb)
 - [spatial_RNA-seq](./tutorials/spatial_RNA-seq.ipynb)
 - [spatial_ATAC-seq](./tutorials/spatial_ATAC-seq.ipynb)
+
+
+## Citation
+
+Li R, Li Y, Hua H, et al. CSFeatures improves the identification of cell-type-specific differential features in single-cell and spatial omics data. Journal of Advanced Research, 2026.https://doi.org/10.1016/j.jare.2026.05.027
