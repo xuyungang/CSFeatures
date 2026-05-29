@@ -383,7 +383,7 @@ def calculate_EI(cluster_count_matrix:np.ndarray,
 
 
 @njit(parallel=True)
-def __smoothness_adata(gene_count,cell2cell,similarity_matrix):
+def __smoothness_single_gene(gene_count,cell2cell,similarity_matrix):
     cell_dim=cell2cell.shape[0]
     ans=0
     for j in prange(cell_dim):
@@ -419,7 +419,7 @@ def __smoothness_adata(cluster_count_matrix, similarity_matrix):
             end = similarity_matrix.indptr[j + 1]
             cell2cell[j][:end - start] = similarity_matrix.indices[start:end]
         tmp_similarity_matrix = np.array([similarity_matrix[i, cell2cell[i]].toarray().reshape(-1) for i in range(cell_dim)])
-        return __smoothness_adata(gene_count, cell2cell, tmp_similarity_matrix)
+        return __smoothness_single_gene(gene_count, cell2cell, tmp_similarity_matrix)
 
     ans = Parallel(n_jobs=16)(delayed(process_gene)(i) for i in range(gene_dim))
     return np.array(ans)
