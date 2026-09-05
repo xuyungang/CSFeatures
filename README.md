@@ -1,136 +1,197 @@
-# CSFeatures: Identification of Cell-Type-Specific Differential Features in Single-Cell and Spatial Omics Data
+# CSFeatures
 
-## Introduction
-CSFeatures is a tool designed to identify cell type-specific differentially expressed genes or differentially accessible regions in single-cell and spatial omics data.
+CSFeatures identifies cell-type-specific differential features in single-cell
+and spatial omics data. It supports gene-expression matrices and chromatin
+accessibility matrices and computes the Expression Index (EI) and related
+statistics for every feature within each cell type. Features can be ranked by
+descending EI following the method described in the CSFeatures paper.
+
+This repository contains **CSFeatures V1.0** (Python package version
+**1.0.0**). The reproducible environment was validated with **CPython
+3.10.14** and the exact dependency versions recorded in `environment.yml` and
+`requirements.txt`.
+
+## Main features
+
+- Single-cell RNA-seq and single-cell ATAC-seq analysis.
+- Spatial RNA-seq and spatial ATAC-seq analysis.
+- Dense or sparse `AnnData.X`, in-memory `AnnData`, and `.h5ad` input.
+- Paired expression-matrix and cell-label files in CSV format.
+- Configurable cell-type, batch, and spatial-coordinate fields.
+- Independent within-batch scoring followed by median-rank consensus
+  aggregation for multi-batch data.
+- Sparse-preserving ATAC preprocessing and input validation.
+- For AnnData input, reproducible parameter and version metadata are stored in
+  the returned object.
+
+The V1.0 compatibility and performance updates retain the published EI method
+and formulas.
 
 ## Installation
-It is recommended to create a new virtual environment using conda to run this project.
 
-```
-conda create -n CSFeatures python=3.10
-conda activate CSFeatures
-pip install -r requirements.txt
-```
-
-## Quick Start
-
-### 1. Prepare data
-The input of CSFeatures consists of a preprocessed gene expression matrix and a vector that contains the corresponding labels for all cells to be investigated, such as cell type labels or clustering labels. For spatial omics data, spatial coordinates must also be provided.
-
-You can also provide an AnnData object as input. The provided AnnData format should meet the following requirements:
-- The shape of AnnData should be (number of cells, number of genes or regions).
-- The AnnData.obs must contain a 'celltype' field to provide cell classifications.
-- If processing spatial RNA-seq or spatial ATAC-seq data, the AnnData.obsm should include a 'spatial' field to provide spatial coordinates.
-
-The following is an example of scRNA-seq/scATAC-seq data:
+Creating a dedicated environment is recommended because V1.0 uses an exact,
+validated dependency set.
 
 ```bash
-AnnData object with n_obs × n_vars = 1000 × 2000
-    obs: 'celltype'
+git clone https://github.com/xuyungang/CSFeatures.git
+cd CSFeatures
+conda env create -f environment.yml
+conda activate csfeatures-v1.0
+python -m pip install -e . --no-deps
 ```
-The following is an example of spatial RNA-seq/ATAC-seq data:
+
+Confirm the installed version:
 
 ```bash
-AnnData object with n_obs × n_vars = 1000 × 2000
-    obs: 'celltype'
-    obsm: 'spatial'
+python -c "import marker_utils; print(marker_utils.__version__)"
 ```
 
-### 2. Find differential features
+The expected output is `1.0.0`.
 
-This section primarily utilizes the `getMarkersEI` and `get_spatial_MarkersEI` functions.
+## Input data
 
-## `getMarkersEI` Function
+For `AnnData` input:
 
-This function processes gene expression or chromatin accessibility data contained in an AnnData object to identify differential features in single-cell omics data. The function performs the following tasks:
-- Dimensionality reduction
-- Similarity graph construction
-- Calculation of gene information metrics specified in `method_list`
+- `.X` is a cells-by-features numeric matrix. Dense NumPy arrays and SciPy
+  sparse matrices are supported.
+- `.obs["celltype"]` contains the cell-type or cluster annotation by default.
+  Use `celltype_key` for a different column name.
+- Multi-batch analysis additionally uses a batch column in `.obs`, selected by
+  `batch_col`.
+- Spatial analysis requires coordinates in `.obsm["spatial"]` by default. Use
+  `spatial_key` for a different key.
+- Values must be finite, non-negative, and preprocessed appropriately for the
+  assay. At least two cell types and at least two observations per cell type are
+  required within each analysis unit.
 
-### Parameters
+Alternatively, `getMarkersEI` accepts two CSV files: an expression-matrix file
+with feature identifiers in the first column and cells in the header, and a
+cell-label file with cell identifiers in the first column. The second column of
+the label file contains the cell type; a named batch column may also be supplied
+for batch-aware analysis.
 
-- **`adata` (str)**:  
-  An `AnnData` object containing either a single-cell gene expression matrix or chromatin accessibility data. Its `.X` attribute should be a 2D array with rows corresponding to cells and columns to features.
+## Quick start
 
-- **`n_comps` (int, optional)**:  
-  The number of principal components to calculate in PCA. The default value is 50.
+### Single-cell data
 
-- **`n_neighbors` (int, optional)**:  
-  The number of nearest neighbors used to build the k-nearest neighbors graph. The default value is 30.
+```python
+from marker_utils import getMarkersEI, save_data
 
-- **`metric` (str, optional)**:  
-  The distance metric used to compute cell similarities. The default is `'euclidean'`.
+info, result_adata = getMarkersEI(
+    adata_path="input.h5ad",
+    celltype_key="celltype",
+    n_comps=50,
+    n_neighbors=30,
+    random_state=0,
+)
 
-- **`method_list` (list, optional)**:  
-  Function list for calculating various characterization feature activities. The default includes:
+save_data(info, output_dir="results/markers")
+result_adata.write_h5ad("results/csfeatures_result.h5ad", compression="gzip")
+```
 
-  - `calculate_mean_and_var`
-  - `calculate_smoothness`
-  - `calculate_V`
-  - `calculate_prop`
-  - `calculate_local_mean_max`
-  - `calculate_EI`
+`info` maps each cell type to a complete feature-statistics table containing
+`Features`, `Mean`, `Smoothness`, `Local_max`, `V`, `Prop`, `Prop_sum`, `P`, and
+`EI`. Higher EI values indicate stronger cell-type specificity.
 
+For non-batch analyses, returned tables retain input feature order. `save_data`
+sorts each exported table by descending `EI`; for in-memory ranking, use
+`table.sort_values("EI", ascending=False)`.
 
-### Return Values
+For CSV input:
 
-- **`info`**:  
- A DataFrame containing feature information metrics calculated based on the methods in `method_list`.
+```python
+from marker_utils import getMarkersEI
 
-- **`adata`**:  
-  The `AnnData` object with updated EI values.
+info = getMarkersEI(
+    input_file="expression_matrix.csv",
+    clusters_file="cell_labels.csv",
+)
+```
 
-## `get_spatial_MarkersEI` Function
+### Multi-batch data
 
-This function processes gene expression or chromatin accessibility data contained in an AnnData object to identify differential features in spatial omics data. The function performs the following tasks:
-- Dimensionality reduction
-- Similarity graph construction
-- Calculation of gene information metrics specified in `method_list`
+```python
+from pathlib import Path
+from marker_utils import getMarkersEI
 
-### Parameters
+consensus, per_batch, batch_adatas = getMarkersEI(
+    adata_path="input.h5ad",
+    celltype_key="celltype",
+    batch_col="batch",
+)
 
-- **`adata` (AnnData)**:  
-   An `AnnData` object containing either a spatial gene expression matrix or chromatin accessibility data. Its `.X` attribute should be a 2D array with rows corresponding to cells and columns to features.
-- **`n_comps` (int, optional)**:  
-  The number of principal components to calculate in PCA. The default value is 50.
+output_dir = Path("results")
+output_dir.mkdir(parents=True, exist_ok=True)
+for celltype, table in consensus.items():
+    table.to_csv(output_dir / f"{celltype}_consensus.csv", index=False)
+```
 
-- **`n_neighbors` (int, optional)**:  
-  The number of nearest neighbors used to build the k-nearest neighbors graph. The default value is 30.
+Each batch is processed independently. Features are ranked by EI within each
+batch, and one consensus table per cell type is generated by ascending
+`MedianRank`; `MeanRank`, `MeanEI`, and feature name are deterministic
+tie-breakers.
 
-- **`metric` (str, optional)**:  
-  The distance metric used to compute cell similarities. The default is `'euclidean'`.
+### Spatial data
 
-- **`spatial_key` (str, optional)**:  
-  The key used to specify spatial information. The default is `'spatial'`.
+```python
+from marker_utils import get_spatial_MarkersEI
 
-- **`method_list` (list, optional)**:  
-  A list of functions used to compute various gene statistics. The default includes:
+info, result_adata = get_spatial_MarkersEI(
+    "spatial_input.h5ad",
+    celltype_key="celltype",
+    spatial_key="spatial",
+)
+```
 
-  - `calculate_mean_and_var`
-  - `calculate_smoothness`
-  - `calculate_V`
-  - `calculate_prop`
-  - `calculate_local_mean_max`
-  - `calculate_EI`
+### ATAC preprocessing
 
-### Return Values
+From the repository root, an ATAC `AnnData` file can be preprocessed with:
 
-- **`info`**:  
- A DataFrame containing feature information metrics calculated based on the methods in `method_list`.
+```bash
+python atac_processed.py --input input.h5ad --output results
+```
 
-- **`adata`**:  
-  The `AnnData` object with updated EI values.
+Use `--no-lazy` to skip the optional `episcanpy.pp.lazy` dimensionality
+reduction and visualization step.
 
-## Tutorial
+## Tutorials and example data
 
-This repository provides four example datasets on Google Drive: [scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link), [scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link),  [spatial RNA-seq](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link) and [spatial ATAC-seq data](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link). For detailed workflows on how CSFeatures identifies differentially expressed genes and differentially accessible regions in scRNA-seq, scATAC-seq, spatial RNA-seq, and spatial ATAC-seq data, please refer to the following links:
+The repository includes the following notebooks:
 
 - [scRNA-seq](./tutorials/scRNA-seq.ipynb)
 - [scATAC-seq](./tutorials/scATAC-seq.ipynb)
-- [spatial_RNA-seq](./tutorials/spatial_RNA-seq.ipynb)
-- [spatial_ATAC-seq](./tutorials/spatial_ATAC-seq.ipynb)
+- [spatial RNA-seq](./tutorials/spatial_RNA-seq.ipynb)
+- [spatial ATAC-seq](./tutorials/spatial_ATAC-seq.ipynb)
+- [CSFeatures V1.0 user example](./tutorials/CSFeatures-V1.0-%E7%94%A8%E6%88%B7%E7%A4%BA%E4%BE%8B.ipynb)
 
+The four published example datasets are available from Google Drive:
+[scRNA-seq](https://drive.google.com/file/d/1LWOnXLHYn8W6GFQ2NTfi84JyY9B4XGOK/view?usp=drive_link),
+[scATAC-seq](https://drive.google.com/file/d/1mXGWKpOMR4I-mqhyAIQ_UFV6VbHwizdh/view?usp=drive_link),
+[spatial RNA-seq](https://drive.google.com/file/d/1U3_0FIBEcTLzTiAHQG00sMNSLvq7lFtl/view?usp=drive_link), and
+[spatial ATAC-seq](https://drive.google.com/file/d/1w7oxnwR_Nma5uTm0yOf4I2O44tGC5Dif/view?usp=drive_link).
+
+The path `./example_data/rna.h5ad` in the V1.0 user notebook is a placeholder;
+download or prepare an input file and update the path before running it.
+
+## Verification
+
+Run the regression suite from the repository root:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The suite covers dense and sparse inputs, spatial object and file-path input,
+small datasets, batch consensus aggregation, CSV alignment, sparse ATAC TF-IDF,
+and validation errors.
 
 ## Citation
 
-Li R, Li Y, Hua H, et al. CSFeatures improves the identification of cell-type-specific differential features in single-cell and spatial omics data. Journal of Advanced Research, 2026.https://doi.org/10.1016/j.jare.2026.05.027
+Li R, Li Y, Hua H, et al. CSFeatures improves the identification of
+cell-type-specific differential features in single-cell and spatial omics data.
+*Journal of Advanced Research*. 2026.
+[https://doi.org/10.1016/j.jare.2026.05.027](https://doi.org/10.1016/j.jare.2026.05.027)
+
+## License
+
+This project is distributed under the [MIT License](./LICENSE).
